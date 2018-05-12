@@ -67,8 +67,8 @@ class JuceConan(ConanFile):
 		"juce_use_xshm": [True, False],
 		"juce_use_xrender": [True, False],
 		"juce_use_xcursor": [True, False],
-		"juce_web_browser=True": [True, False],
-		"juce_enable_live_constant_editor=False": [True, False],
+		"juce_web_browser": [True, False],
+		"juce_enable_live_constant_editor": [True, False],
 		"juce_use_camera": [True, False]
 	}
 	default_options = (
@@ -100,7 +100,7 @@ class JuceConan(ConanFile):
 		"juce_use_oggvorbis=True",
 		"juce_use_mp3audioformat=False",
 		"juce_use_lame_audio_format=False",
-		"juce_use_windows_media_format=True".
+		"juce_use_windows_media_format=True",
 		"juce_pluginhost_vst=False",
 		"juce_pluginhost_vst3=False",
 		"juce_pluginhost_au=False",
@@ -120,7 +120,8 @@ class JuceConan(ConanFile):
 		"juce_use_xinerama=True",
 		"juce_use_xshm=True",
 		"juce_use_xrender=False",
-		"juce_web_browser=True".
+		"juce_use_xcursor=True",
+		"juce_web_browser=True",
 		"juce_enable_live_constant_editor=False",
 		"juce_use_camera=False"
 	)
