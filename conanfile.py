@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from conans import ConanFile, CMake, MSBuild, tools
-from shutil import copy2
+from shutil import copy2, copytree
 import os
 import xml.etree.ElementTree
 
@@ -14,7 +14,7 @@ class JuceConan(ConanFile):
 	description = "The JUCE cross-platform C++ framework"
 	license = "GPLv3"
 	exports = ["README.md"]
-	exports_sources = ["libjuce.jucer"]
+	exports_sources = ["libjuce.jucer", "Projucer*"]
 	generators = "cmake"
 	settings = "os", "arch", "compiler", "build_type"
 	options = {
@@ -131,6 +131,8 @@ class JuceConan(ConanFile):
 	build_subfolder = "build_subfolder"
 	
 	def configure_jucer(self):
+		print("Configuring Projucer project with conan build settings...")
+	
 		tree = xml.etree.ElementTree.parse("libjuce.jucer")
 		root = tree.getroot()
 		
@@ -226,53 +228,55 @@ class JuceConan(ConanFile):
 		
 		tree.write("libjuce.jucer")
 		
-
-	def source(self):
-		source_url = "https://github.com/WeAreROLI/JUCE"
-		tools.get("{0}/archive/{1}.tar.gz".format(source_url, self.version))
-		extracted_dir = self.name + "-" + self.version
-		os.rename(extracted_dir, self.source_subfolder)
-
-	def build(self):
-		self.configure_jucer()
-	
-		projucer_path = self.build_projucer()
 		
-		self.run(projucer_path + " --resave libjuce.jucer")
-		
-		if self.settings.os == "Windows":
-			msbuild = MSBuild(self)
-			msbuild.build(os.path.join("Builds", self.msvc_version_lookup(), "libjuce.sln"))
-			
-		elif self.settings.os == "Macos":
-			self.build_xcode()
-	
 	def build_projucer(self):
 	
+		print("Building Projucer...")
+	
 		if self.settings.os == "Windows":
 		
-			projucer_project_folder = os.path.join(self.source_subfolder, "extras\Projucer\Builds", self.msvc_version_lookup())
+			projucer_project_folder = os.path.join(self.source_subfolder, "extras\Projucer\ConanBuilds", self.msvc_version_lookup())
 			
 			if self.settings.arch == "x86_64":
 				arch_name = "x64"
 			else:
 				arch_name = "Win32"
 		
-			vcvars = tools.vcvars_command(self.settings)
-
 			msbuild = MSBuild(self)
-			msbuild.build(os.path.join(projucer_project_folder, "Projucer.sln"), build_type="Release", arch="x86_64")
+			msbuild.build(os.path.join(projucer_project_folder, "Projucer.sln"), build_type="Release", platforms={"x86":"Win32", "x86_64":"x64"})
 			
-			return os.path.join(projucer_project_folder, arch_name, "Release\App\Projucer.exe")
+			copy2(os.path.join(projucer_project_folder, arch_name, "Release\App\Projucer.exe"), ".")
 		
 		elif self.settings.os == "Macos":
 		
-			projucer_project_folder = os.path.join(self.source_subfolder, "extras/Projucer/Builds/MacOSX")
-			
+			projucer_project_folder = os.path.join(self.source_subfolder, "extras/Projucer/ConanBuilds/MacOSX")
 		
 		
-		return ""
+	def source(self):
+		source_url = "https://github.com/WeAreROLI/JUCE"
+		tools.get("{0}/archive/{1}.tar.gz".format(source_url, self.version))
+		extracted_dir = self.name + "-" + self.version
+		os.rename(extracted_dir, self.source_subfolder)
+		
+		# Need to replace Projucer builds folder with package version containing more build archs
+		copytree("projucer_builds", os.path.join(self.source_subfolder, "extras\Projucer\ConanBuilds"))
+		
+		self.build_projucer()
 
+		
+	def build(self):
+		self.configure_jucer()
+		
+		self.run("Projucer --resave libjuce.jucer")
+		
+		if self.settings.os == "Windows":
+			msbuild = MSBuild(self)
+			msbuild.build(os.path.join("Builds", self.msvc_version_lookup(), "libjuce.sln"), platforms={"x86":"Win32", "x86_64":"x64"})
+			
+		elif self.settings.os == "Macos":
+			self.build_xcode()	
+
+			
 	def package(self):
 		self.copy(pattern="README.md", src=self.source_subfolder, keep_path=False)
 		self.copy(pattern="*.h", dst="include", src=os.path.join(self.source_subfolder, "modules"))
@@ -281,8 +285,10 @@ class JuceConan(ConanFile):
 		self.copy(pattern="*.lib", dst="lib", keep_path=False)
 		self.copy(pattern="*.dll", dst="bin", keep_path=False)
 
+		
 	def package_info(self):
 		self.cpp_info.libs = tools.collect_libs(self)
+		
 		
 	def msvc_version_lookup(self):
 		if self.settings.compiler.version == "12":
