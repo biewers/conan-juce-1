@@ -14,7 +14,7 @@ class JuceConan(ConanFile):
 	description = "The JUCE cross-platform C++ framework"
 	license = "GPLv3"
 	exports = ["README.md"]
-	exports_sources = ["libjuce.jucer", "Projucer*"]
+	exports_sources = ["libjuce.jucer", "projucer*"]
 	generators = "cmake"
 	settings = "os", "arch", "compiler", "build_type"
 	options = {
@@ -141,14 +141,15 @@ class JuceConan(ConanFile):
 		
 		root.set("projectType", "dll" if self.options.shared == "True" else "library" )
 		
-		configs_vs2013 = root.find("EXPORTFORMATS/VS2013/CONFIGURATIONS")
-		configs_vs2015 = root.find("EXPORTFORMATS/VS2015/CONFIGURATIONS")
-		configs_vs2017 = root.find("EXPORTFORMATS/VS2017/CONFIGURATIONS")
+		if self.settings.os == "Windows":
+			configs_vs2013 = root.find("EXPORTFORMATS/VS2013/CONFIGURATIONS")
+			configs_vs2015 = root.find("EXPORTFORMATS/VS2015/CONFIGURATIONS")
+			configs_vs2017 = root.find("EXPORTFORMATS/VS2017/CONFIGURATIONS")
 				
-		for c in configs_vs2013.findall("CONFIGURATION") + configs_vs2015.findall("CONFIGURATION") + configs_vs2017.findall("CONFIGURATION"):
-			c.set("winArchitecture", "x64" if self.settings.arch == "x86_64" else "Win32")
-			c.set("useRuntimeLibDLL", "1" if self.settings.compiler.runtime == "MD" or self.settings.compiler.runtime == "MDd" else "0")
-		
+			for c in configs_vs2013.findall("CONFIGURATION") + configs_vs2015.findall("CONFIGURATION") + configs_vs2017.findall("CONFIGURATION"):
+				c.set("winArchitecture", "x64" if self.settings.arch == "x86_64" else "Win32")
+				c.set("useRuntimeLibDLL", "1" if self.settings.compiler.runtime == "MD" or self.settings.compiler.runtime == "MDd" else "0")
+
 		# PROJECT OPTIONS
 		root.set("reportAppUsage", "1" if self.options.report_app_usage == "True" else "0" )
 		root.set("displaySplashScreen", "1" if self.options.display_splash_screen == "True" else "0" )
@@ -235,7 +236,7 @@ class JuceConan(ConanFile):
 	
 		if self.settings.os == "Windows":
 		
-			projucer_project_folder = os.path.join(self.source_subfolder, "extras\Projucer\ConanBuilds", self.msvc_version_lookup())
+			projucer_project_folder = os.path.join(self.source_subfolder, "extras/Projucer/ConanBuilds", self.msvc_version_lookup())
 			
 			if self.settings.arch == "x86_64":
 				arch_name = "x64"
@@ -245,11 +246,13 @@ class JuceConan(ConanFile):
 			msbuild = MSBuild(self)
 			msbuild.build(os.path.join(projucer_project_folder, "Projucer.sln"), build_type="Release", platforms={"x86":"Win32", "x86_64":"x64"})
 			
-			copy2(os.path.join(projucer_project_folder, arch_name, "Release\App\Projucer.exe"), ".")
+			copy2(os.path.join(projucer_project_folder, arch_name, "Release/App/Projucer.exe"), ".")
 		
 		elif self.settings.os == "Macos":
 		
 			projucer_project_folder = os.path.join(self.source_subfolder, "extras/Projucer/ConanBuilds/MacOSX")
+
+			self.run("xcodebuild -project {0}/Projucer.xcodeproj -configuration Release CONFIGURATION_BUILD_DIR={1}".format(projucer_project_folder, os.getcwd()))
 		
 		
 	def source(self):
@@ -259,7 +262,7 @@ class JuceConan(ConanFile):
 		os.rename(extracted_dir, self.source_subfolder)
 		
 		# Need to replace Projucer builds folder with package version containing more build archs
-		copytree("projucer_builds", os.path.join(self.source_subfolder, "extras\Projucer\ConanBuilds"))
+		copytree("projucer_builds", os.path.join(self.source_subfolder, "extras/Projucer/ConanBuilds"))
 		
 		self.build_projucer()
 
@@ -267,15 +270,17 @@ class JuceConan(ConanFile):
 	def build(self):
 		self.configure_jucer()
 		
-		self.run("Projucer --resave libjuce.jucer")
-		
 		if self.settings.os == "Windows":
+			self.run("Projucer --resave libjuce.jucer")
 			msbuild = MSBuild(self)
 			msbuild.build(os.path.join("Builds", self.msvc_version_lookup(), "libjuce.sln"), platforms={"x86":"Win32", "x86_64":"x64"})
 			
 		elif self.settings.os == "Macos":
+			self.run("Projucer.app/Contents/MacOS/Projucer --resave libjuce.jucer")
 			self.build_xcode()	
 
+	def build_xcode(self):
+		self.run("xcodebuild -project Builds/MacOSX/libjuce.xcodeproj -configuration {0}".format(self.settings.build_type))
 			
 	def package(self):
 		self.copy(pattern="README.md", src=self.source_subfolder, keep_path=False)
@@ -283,12 +288,23 @@ class JuceConan(ConanFile):
 		self.copy(pattern="*.h", dst="include", src="JuceLibraryCode", keep_path=False)
 			
 		self.copy(pattern="*.lib", dst="lib", keep_path=False)
+		self.copy(pattern="*.a", dst="lib", keep_path=False)
 		self.copy(pattern="*.dll", dst="bin", keep_path=False)
+		self.copy(pattern="*.dylib", dst="bin", keep_path=False)
 
 		
 	def package_info(self):
 		self.cpp_info.libs = tools.collect_libs(self)
-		
+		if self.settings.os == "Macos":
+			self.cpp_info.exelinkflags.append("-framework CoreFoundation")
+			self.cpp_info.sharedlinkflags.append("-framework CoreFoundation")
+			self.cpp_info.exelinkflags.append("-framework CoreServices")
+			self.cpp_info.sharedlinkflags.append("-framework CoreServices")
+			self.cpp_info.exelinkflags.append("-framework AppleScriptObjC")
+			self.cpp_info.sharedlinkflags.append("-framework AppleScriptObjC")
+			self.cpp_info.exelinkflags.append("-framework Cocoa")
+			self.cpp_info.sharedlinkflags.append("-framework Cocoa")
+
 		
 	def msvc_version_lookup(self):
 		if self.settings.compiler.version == "12":
