@@ -292,18 +292,43 @@ class JuceConan(ConanFile):
         self.copy(pattern="*.dll", dst="bin", keep_path=False)
         self.copy(pattern="*.dylib", dst="bin", keep_path=False)
 
-        
+
     def package_info(self):
+        self.cpp_info.cppflags.append("-std=c++14")
+        if self.settings.build_type == "Debug":
+            self.cpp_info.cppflags.append("-DDEBUG")
+            self.cpp_info.cppflags.append("-D_DEBUG")
+        else:
+            self.cpp_info.cppflags.append("-DNDEBUG")
+            self.cpp_info.cppflags.append("-D_NDEBUG")
         self.cpp_info.libs = tools.collect_libs(self)
         if self.settings.os == "Macos":
-            self.cpp_info.exelinkflags.append("-framework CoreFoundation")
-            self.cpp_info.sharedlinkflags.append("-framework CoreFoundation")
-            self.cpp_info.exelinkflags.append("-framework CoreServices")
-            self.cpp_info.sharedlinkflags.append("-framework CoreServices")
-            self.cpp_info.exelinkflags.append("-framework AppleScriptObjC")
-            self.cpp_info.sharedlinkflags.append("-framework AppleScriptObjC")
-            self.cpp_info.exelinkflags.append("-framework Cocoa")
+            self.cpp_info.sharedlinkflags.append("-framework Accelerate")
+            self.cpp_info.sharedlinkflags.append("-framework AudioToolbox")
+            self.cpp_info.sharedlinkflags.append("-framework AVFoundation")
+            self.cpp_info.sharedlinkflags.append("-framework AVKit")
+            self.cpp_info.sharedlinkflags.append("-framework Carbon")
             self.cpp_info.sharedlinkflags.append("-framework Cocoa")
+            self.cpp_info.sharedlinkflags.append("-framework CoreAudio")
+            self.cpp_info.sharedlinkflags.append("-framework CoreMedia")
+            self.cpp_info.sharedlinkflags.append("-framework CoreMIDI")
+            self.cpp_info.sharedlinkflags.append("-framework IOKit")
+            self.cpp_info.sharedlinkflags.append("-framework OpenGL")
+            self.cpp_info.sharedlinkflags.append("-framework QuartzCore")
+            self.cpp_info.sharedlinkflags.append("-framework WebKit")
+            self.cpp_info.exelinkflags.append("-framework Accelerate")
+            self.cpp_info.exelinkflags.append("-framework AudioToolbox")
+            self.cpp_info.exelinkflags.append("-framework AVFoundation")
+            self.cpp_info.exelinkflags.append("-framework AVKit")
+            self.cpp_info.exelinkflags.append("-framework Carbon")
+            self.cpp_info.exelinkflags.append("-framework Cocoa")
+            self.cpp_info.exelinkflags.append("-framework CoreAudio")
+            self.cpp_info.exelinkflags.append("-framework CoreMedia")
+            self.cpp_info.exelinkflags.append("-framework CoreMIDI")
+            self.cpp_info.exelinkflags.append("-framework IOKit")
+            self.cpp_info.exelinkflags.append("-framework OpenGL")
+            self.cpp_info.exelinkflags.append("-framework QuartzCore")
+            self.cpp_info.exelinkflags.append("-framework WebKit")
 
         
     def msvc_version_lookup(self):
